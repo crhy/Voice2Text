@@ -1,7 +1,9 @@
 {
-  "name": "editr",
+  "name": "voice2text",
   "version": "0.1.0",
-  "private": true,
+  "description": "A beautiful voice-to-text app with OpenCode integration",
+  "main": "electron.js",
+  "homepage": "./",
   "dependencies": {
     "@speechly/speech-recognition-polyfill": "^1.1.0",
     "@testing-library/jest-dom": "^5.16.2",
@@ -18,7 +20,11 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "electron": "electron .",
+    "electron-dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
+    "dist": "npm run build && electron-builder",
+    "dist:linux": "npm run build && electron-builder --linux"
   },
   "eslintConfig": {
     "extends": [
@@ -37,5 +43,34 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12",
+    "wait-on": "^9.0.1"
+  },
+  "build": {
+    "appId": "com.voice2text.app",
+    "productName": "Voice2Text",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "build/**/*",
+      "node_modules/**/*",
+      "electron.js"
+    ],
+    "linux": {
+      "target": [
+        {
+          "target": "flatpak",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Utility"
+    }
   }
 }
