@@ -40,7 +40,14 @@ const Options = ({ setText, listening, text }) => {
               }
             }}
           ></i>
-          <a target="_blank" href="https://github.com/thaywo/Voice2Text">
+          {text.length > 0 && (
+            <i
+              title="Copy Text to Clipboard"
+              className="fi fi-rr-copy option"
+              onClick={() => navigator.clipboard.writeText(text)}
+            ></i>
+          )}
+          <a target="_blank" href="https://github.com/crhy/Voice2Text">
             <i title="Give a Star" className="fi fi-rr-star option"></i>
           </a>
         </div>
