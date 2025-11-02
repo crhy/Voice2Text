@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.voice2text.app</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Voice2Text</name>
+  <summary>A beautiful voice-to-text app with OpenCode integration</summary>
+  <description>
+    <p>
+      Voice2Text is a modern, elegant speech-to-text application that converts your voice into written text in real-time.
+      Features include:
+    </p>
+    <ul>
+      <li>Real-time speech recognition</li>
+      <li>Multiple microphone support</li>
+      <li>Beautiful blue gradient UI</li>
+      <li>Copy-to-clipboard functionality</li>
+      <li>Word and character counting</li>
+      <li>Special character detection</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">com.voice2text.app.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main interface showing speech recognition in action</caption>
+    </screenshot>
+  </screenshots>
+  <categories>
+    <category>Utility</category>
+    <category>AudioVideo</category>
+  </categories>
+  <keywords>
+    <keyword>speech</keyword>
+    <keyword>recognition</keyword>
+    <keyword>voice</keyword>
+    <keyword>text</keyword>
+    <keyword>transcription</keyword>
+  </keywords>
+  <url type="homepage">https://github.com/username/voice2text</url>
+  <provides>
+    <binary>electron-wrapper</binary>
+  </provides>
+</component>

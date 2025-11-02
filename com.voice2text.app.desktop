@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Voice2Text
+Comment=A beautiful voice-to-text app with OpenCode integration
+Exec=electron-wrapper /app/voice2text
+Icon=com.voice2text.app
+Type=Application
+Categories=Utility;AudioVideo;

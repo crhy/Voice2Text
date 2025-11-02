@@ -67,6 +67,29 @@
   border-color: #5a67d8;
 }
 
+.error-message {
+  text-align: center;
+  padding: 2rem;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0px 0.7px 11.5px rgba(0, 0, 0, 0.028),
+    0px 2.2px 38.6px rgba(0, 0, 0, 0.042), 0px 10px 173px rgba(0, 0, 0, 0.07);
+  border: 2px solid #667eea;
+  margin-top: 5vh;
+}
+
+.error-message h2 {
+  color: #667eea;
+  font-family: "Montserrat Alternates", sans-serif;
+  margin-bottom: 1rem;
+}
+
+.error-message p {
+  color: #666;
+  font-family: "Poppins", sans-serif;
+  margin: 0.5rem 0;
+}
+
 .main-container {
   margin-top: 5vh;
   display: flex;

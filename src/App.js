@@ -4,16 +4,7 @@ import Editor from "./Components/Editor/Editor.jsx";
 import Options from "./Components/Options/Options.jsx";
 import Details from "./Components/Details/Details";
 
-import { useEffect, useState } from "react";
-import SpeechRecognition, {
-  useSpeechRecognition,
-} from "react-speech-recognition";
-
-import { createSpeechlySpeechRecognition } from "@speechly/speech-recognition-polyfill";
-
-const appId = 'a1e6781b-494b-4a88-adfc-599724a002f0';
-const SpeechlySpeechRecognition = createSpeechlySpeechRecognition(appId);
-SpeechRecognition.applyPolyfill(SpeechlySpeechRecognition);
+import { useEffect, useState, useRef } from "react";
 
 function App() {
   const [text, setText] = useState("");
@@ -23,16 +14,60 @@ function App() {
   const [microphones, setMicrophones] = useState([]);
   const [selectedMic, setSelectedMic] = useState('');
   const [micPermission, setMicPermission] = useState('unknown'); // 'unknown', 'granted', 'denied'
+  const [listening, setListening] = useState(false);
+  const [browserSupportsSpeechRecognition, setBrowserSupportsSpeechRecognition] = useState(false);
+  const recognitionRef = useRef(null);
   let format = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/;
   let localcount = 0;
 
-  const { transcript, listening, browserSupportsSpeechRecognition } =
-    useSpeechRecognition();
-  const startListening = () =>
-    SpeechRecognition.startListening({
-      continuous: true,
-      language: 'en-US'
-    });
+  useEffect(() => {
+    // Check if browser supports speech recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setBrowserSupportsSpeechRecognition(true);
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event) => {
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          }
+        }
+        if (finalTranscript) {
+          setText(prevText => prevText + (prevText ? ' ' : '') + finalTranscript.toLowerCase());
+        }
+      };
+
+      recognitionRef.current.onstart = () => {
+        setListening(true);
+      };
+
+      recognitionRef.current.onend = () => {
+        setListening(false);
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setListening(false);
+      };
+    }
+  }, []);
+
+  const startListening = () => {
+    if (recognitionRef.current && !listening) {
+      recognitionRef.current.start();
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current && listening) {
+      recognitionRef.current.stop();
+    }
+  };
 
   useEffect(() => {
     if (text) {
@@ -52,13 +87,7 @@ function App() {
     }
   }, [text]);
 
-  useEffect(() => {
-    if (transcript.length > 0 && text.length > 0) {
-      setText(text + " " + transcript.toLowerCase());
-    } else if (transcript.length > 0) {
-      setText(transcript.toLowerCase());
-    }
-  }, [listening]);
+
 
   useEffect(() => {
     // Check microphone permissions
@@ -85,6 +114,21 @@ function App() {
   }, [selectedMic]);
 
 
+
+  if (!browserSupportsSpeechRecognition) {
+    return (
+      <div className="App">
+        <Navbar />
+        <div className="main-container">
+          <div className="error-message">
+            <h2>⚠️ Speech Recognition Not Supported</h2>
+            <p>Your browser doesn't support speech recognition.</p>
+            <p>Please use a modern browser like Chrome or Edge.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="App">
@@ -114,7 +158,8 @@ function App() {
           </select>
         )}
       </div>
-       <div className="main-container">
+
+      <div className="main-container">
          <Editor text={text} setText={setText} />
         <Details
           words={words}
@@ -126,7 +171,7 @@ function App() {
       </div>
 
 
-      <Options setText={setText} listening={listening} text={text} />
+      <Options setText={setText} listening={listening} text={text} startListening={startListening} stopListening={stopListening} />
     </div>
   );
 }

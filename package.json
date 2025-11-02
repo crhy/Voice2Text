@@ -62,14 +62,7 @@
       "electron.js"
     ],
     "linux": {
-      "target": [
-        {
-          "target": "flatpak",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
+      "target": "AppImage",
       "category": "Utility"
     }
   }

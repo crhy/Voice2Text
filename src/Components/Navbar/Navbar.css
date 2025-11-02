@@ -5,7 +5,7 @@
   font-family: "Montserrat Alternates", sans-serif;
   font-weight: 600;
   font-size: 1.5rem;
-  background-color: #ff9b0e;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   text-align: center;
   padding: 0.75rem;
@@ -40,8 +40,8 @@
     padding: 0.4rem 1.2rem;
     margin: 0 0.5rem;
     border-radius: 5px;
-    color: #ff9b0e;
-    border: 2px solid #ff9b0e;
+    color: #667eea;
+    border: 2px solid #667eea;
     font-family: "Montserrat Alternates", sans-serif;
     font-weight: 500;
     display: flex;
@@ -60,7 +60,7 @@
     margin-left: 0.5rem;
     font-size: 1.55rem;
     padding-top: 0.5vh;
-    color: #ff9b0e;
+    color: #667eea;
   }
 
   .nbtn i:hover {
