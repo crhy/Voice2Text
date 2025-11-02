@@ -20,14 +20,19 @@ function App() {
   const [words, setWords] = useState(0);
   const [characters, setCharacters] = useState(0);
   const [special, setSpecial] = useState(0);
-  const [stars, setStars] = useState(0);
+  const [microphones, setMicrophones] = useState([]);
+  const [selectedMic, setSelectedMic] = useState('');
+  const [micPermission, setMicPermission] = useState('unknown'); // 'unknown', 'granted', 'denied'
   let format = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/;
   let localcount = 0;
 
   const { transcript, listening, browserSupportsSpeechRecognition } =
     useSpeechRecognition();
   const startListening = () =>
-    SpeechRecognition.startListening({ continuous: true });
+    SpeechRecognition.startListening({
+      continuous: true,
+      language: 'en-US'
+    });
 
   useEffect(() => {
     if (text) {
@@ -55,19 +60,62 @@ function App() {
     }
   }, [listening]);
 
-  useEffect(async () => {
-    fetch(`https://api.github.com/repos/thaywo/Voice2Text`)
-      .then((res) => res.json())
-      .then((data) => {
-        setStars(data.stargazers_count);
+  useEffect(() => {
+    // Check microphone permissions
+    navigator.permissions.query({ name: 'microphone' })
+      .then(result => {
+        setMicPermission(result.state);
+        result.onchange = () => setMicPermission(result.state);
+      })
+      .catch(() => {
+        // Fallback for browsers that don't support permissions API
+        setMicPermission('unknown');
       });
-  }, []);
+
+    // Get available microphones
+    navigator.mediaDevices.enumerateDevices()
+      .then(devices => {
+        const mics = devices.filter(device => device.kind === 'audioinput');
+        setMicrophones(mics);
+        if (mics.length > 0 && !selectedMic) {
+          setSelectedMic(mics[0].deviceId);
+        }
+      })
+      .catch(err => console.error('Error getting microphones:', err));
+  }, [selectedMic]);
+
+
 
   return (
     <div className="App">
       <Navbar />
-      <div className="main-container">
-        <Editor text={text} setText={setText} stars={stars} />
+      <div className="status-bar">
+        <div className={`mic-status ${micPermission}`}>
+          <span className="status-icon">
+            {micPermission === 'granted' ? '🎤' : micPermission === 'denied' ? '🚫' : '❓'}
+          </span>
+          <span className="status-text">
+            {micPermission === 'granted' ? 'Microphone Ready' :
+             micPermission === 'denied' ? 'Microphone Access Denied' :
+             'Click microphone to grant access'}
+          </span>
+        </div>
+        {microphones.length > 1 && (
+          <select
+            value={selectedMic}
+            onChange={(e) => setSelectedMic(e.target.value)}
+            className="mic-dropdown"
+          >
+            {microphones.map((mic) => (
+              <option key={mic.deviceId} value={mic.deviceId}>
+                {mic.label || `Microphone ${mic.deviceId.slice(0, 8)}`}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+       <div className="main-container">
+         <Editor text={text} setText={setText} />
         <Details
           words={words}
           characters={characters}
@@ -76,21 +124,7 @@ function App() {
           browserSupportsSpeechRecognition={browserSupportsSpeechRecognition}
         />
       </div>
-      <div className="buttons">
-        <a href="https://github.com/thaywo/Voice2Text" target="_blank">
-          <button className="pribtn">
-            {stars} Stars <i class="fi fi-brands-github"></i>
-          </button>
-        </a>
 
-        <a href="https://www.linkedin.com/in/taiwo-hassan-531919175/" target="_blank">
-          <button className="secbtn">
-            Connect on LinkedIn <i class="fi fi-brands-linkedin"></i>
-          </button>
-        </a>
-
-      
-      </div>
 
       <Options setText={setText} listening={listening} text={text} />
     </div>

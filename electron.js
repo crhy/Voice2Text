@@ -1,6 +1,21 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, systemPreferences } = require('electron');
 const path = require('path');
 const isDev = process.env.NODE_ENV === 'development';
+
+async function requestMicrophoneAccess() {
+  try {
+    if (process.platform === 'darwin') {
+      const result = await systemPreferences.askForMediaAccess('microphone');
+      return result;
+    } else {
+      // For Windows/Linux, permissions are handled by the browser
+      return true;
+    }
+  } catch (error) {
+    console.error('Error requesting microphone access:', error);
+    return false;
+  }
+}
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -20,6 +35,15 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, 'build/index.html'));
   }
+
+  // Request microphone permissions
+  requestMicrophoneAccess().then((granted) => {
+    if (granted) {
+      console.log('Microphone access granted');
+    } else {
+      console.log('Microphone access denied');
+    }
+  });
 }
 
 app.whenReady().then(createWindow);

@@ -47,9 +47,6 @@ const Options = ({ setText, listening, text }) => {
               onClick={() => navigator.clipboard.writeText(text)}
             ></i>
           )}
-          <a target="_blank" href="https://github.com/crhy/Voice2Text">
-            <i title="Give a Star" className="fi fi-rr-star option"></i>
-          </a>
         </div>
       </div>
 
