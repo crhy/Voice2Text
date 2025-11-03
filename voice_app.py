@@ -50,7 +50,7 @@ class VoiceApp:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         compute_type = "float16" if device == "cuda" else "int8"
         print(f"Using device: {device}, compute_type: {compute_type}")
-        self.model = WhisperModel("small", device=device, compute_type=compute_type)  # Small model optimized for GPU
+        self.model = WhisperModel("base", device=device, compute_type=compute_type)  # Base model for better accuracy
         print("Model loaded!")
 
         # Text-to-speech with gTTS and pygame
