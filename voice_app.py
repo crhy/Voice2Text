@@ -57,7 +57,7 @@ class VoiceApp:
 
         # Ollama models
         self.ollama_models = self.get_ollama_models()
-        self.selected_model = "llama3.2" if "llama3.2" in self.ollama_models else (self.ollama_models[0] if self.ollama_models else "llama3.2")
+        self.selected_model = self.config.get('selected_model', "llama3.2" if "llama3.2" in self.ollama_models else (self.ollama_models[0] if self.ollama_models else "llama3.2"))
         self.is_listening = False
         self.current_text = ""
         self.audio_stream = None
@@ -91,7 +91,8 @@ class VoiceApp:
 
     def save_config(self):
         config = {
-            'microphone_index': self.selected_mic_index
+            'microphone_index': self.selected_mic_index,
+            'selected_model': self.selected_model
         }
         try:
             with open(self.config_file, 'w') as f:
@@ -340,6 +341,7 @@ class VoiceApp:
 
     def clear_text(self):
         self.text_area.delete(1.0, tk.END)
+        self.ai_text_area.delete(1.0, tk.END)
         self.current_text = ""
         self.update_status("Ready", "black")
 
