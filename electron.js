@@ -28,9 +28,13 @@ function createWindow() {
       webSecurity: false, // Allow speech recognition API
       allowRunningInsecureContent: true, // Allow mixed content for speech API
       sandbox: false, // Disable sandboxing for speech recognition
+      experimentalFeatures: true, // Enable experimental features
     },
     icon: path.join(__dirname, 'public/favicon.ico'), // Add icon if available
   });
+
+  // Set user agent to mimic Chrome browser
+  mainWindow.webContents.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:3000');

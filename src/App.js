@@ -31,33 +31,38 @@ function App() {
       recognitionRef.current.lang = 'en-US';
 
       recognitionRef.current.onresult = (event) => {
+        console.log('Speech recognition result:', event);
         let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           if (event.results[i].isFinal) {
             finalTranscript += event.results[i][0].transcript;
           }
         }
+        console.log('Final transcript:', finalTranscript);
         if (finalTranscript) {
           setText(prevText => prevText + (prevText ? ' ' : '') + finalTranscript.toLowerCase());
         }
       };
 
       recognitionRef.current.onstart = () => {
+        console.log('Speech recognition started');
         setListening(true);
       };
 
       recognitionRef.current.onend = () => {
+        console.log('Speech recognition ended');
         setListening(false);
       };
 
       recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
+        console.error('Speech recognition error:', event.error, event);
         setListening(false);
       };
     }
   }, []);
 
   const startListening = () => {
+    console.log('Starting speech recognition...');
     if (recognitionRef.current && !listening) {
       recognitionRef.current.start();
     }
