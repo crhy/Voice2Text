@@ -266,24 +266,37 @@ class VoiceApp:
 
     def query_ollama_and_speak(self, user_text):
         try:
-            # Query Ollama (assuming llama3.2 model)
+            # Check if Ollama is running
+            if not self.ollama_models:
+                self.update_status("Ollama not running - start with 'ollama serve'", "red")
+                return
+
+            self.update_status("🤖 Querying AI...", "#ffaa00")
+            # Query Ollama
             response = requests.post('http://localhost:11434/api/generate',
                                    json={
                                        "model": self.selected_model,
                                        "prompt": user_text,
                                        "stream": False
                                    },
-                                   timeout=30)
+                                   timeout=60)
             if response.status_code == 200:
-                ai_response = response.json()['response']
-                # Speak the response
-                self.tts_engine.say(ai_response)
-                self.tts_engine.runAndWait()
-                self.update_status("🤖 AI responded!", "#00aa00")
+                ai_response = response.json()['response'].strip()
+                if ai_response:
+                    # Speak the response
+                    self.tts_engine.say(ai_response)
+                    self.tts_engine.runAndWait()
+                    self.update_status("🤖 AI responded!", "#00aa00")
+                else:
+                    self.update_status("AI gave empty response", "orange")
             else:
-                self.update_status("Ollama error", "red")
+                self.update_status(f"Ollama error: {response.status_code}", "red")
+        except requests.exceptions.Timeout:
+            self.update_status("AI timeout - model may be slow", "red")
+        except requests.exceptions.ConnectionError:
+            self.update_status("Cannot connect to Ollama - check if running", "red")
         except Exception as e:
-            self.update_status(f"AI error: {e}", "red")
+            self.update_status(f"AI error: {str(e)[:50]}", "red")
 
     def clear_text(self):
         self.text_area.delete(1.0, tk.END)
