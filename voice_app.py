@@ -189,6 +189,10 @@ class VoiceApp:
                                       command=self.copy_text)
         self.copy_button.pack(side='left', padx=5)
 
+        self.send_ai_button = ttk.Button(button_frame, text="🤖 Send to AI",
+                                         command=self.send_to_ai)
+        self.send_ai_button.pack(side='left', padx=5)
+
         self.clear_button = ttk.Button(button_frame, text="🗑️ Clear",
                                        command=self.clear_text)
         self.clear_button.pack(side='left', padx=5)
@@ -251,6 +255,14 @@ class VoiceApp:
             self.update_status("📋 Text copied to clipboard!", "#0066cc")
         else:
             self.update_status("No text to copy", "black")
+
+    def send_to_ai(self):
+        text = self.text_area.get(1.0, tk.END).strip()
+        if text:
+            self.update_status("🤖 Sending to AI...", "#ffaa00")
+            threading.Thread(target=self.query_ollama_and_speak, args=(text,), daemon=True).start()
+        else:
+            self.update_status("No text to send to AI", "black")
 
     def query_ollama_and_speak(self, user_text):
         try:
