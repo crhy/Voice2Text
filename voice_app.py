@@ -154,10 +154,6 @@ class VoiceApp:
                                       command=self.copy_text)
         self.copy_button.pack(side='left', padx=5)
 
-        self.send_button = ttk.Button(button_frame, text="📤 Send to OpenCode",
-                                     command=self.send_to_opencode)
-        self.send_button.pack(side='left', padx=5)
-
         self.clear_button = ttk.Button(button_frame, text="🗑️ Clear",
                                        command=self.clear_text)
         self.clear_button.pack(side='left', padx=5)
@@ -204,6 +200,9 @@ class VoiceApp:
         else:
             self.update_status("Ready", "black")
 
+        # Small delay to ensure audio stream is fully closed
+        time.sleep(0.1)
+
     def copy_text(self):
         text = self.text_area.get(1.0, tk.END).strip()
         if text:
@@ -211,14 +210,6 @@ class VoiceApp:
             self.update_status("📋 Text copied to clipboard!", "#0066cc")
         else:
             self.update_status("No text to copy", "black")
-
-    def send_to_opencode(self):
-        text = self.text_area.get(1.0, tk.END).strip()
-        if text:
-            pyperclip.copy(text)
-            self.update_status("📤 Text sent to OpenCode - paste with Ctrl+V!", "#00aa00")
-        else:
-            self.update_status("No text to send", "black")
 
     def clear_text(self):
         self.text_area.delete(1.0, tk.END)
@@ -231,7 +222,7 @@ class VoiceApp:
 
             # Start audio stream - try different sample rates
             self.audio_frames = []
-            sample_rates = [44100, 48000, 16000]  # Try common rates
+            sample_rates = [48000, 44100, 32000, 22050, 16000, 8000]  # Try common rates
 
             for rate in sample_rates:
                 try:
