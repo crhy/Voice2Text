@@ -22,12 +22,15 @@ from scipy.signal import resample
 import torch
 import requests
 import pyttsx3
+from gtts import gTTS
+import pygame
+import os
 
 class VoiceApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Voice To AI")
-        self.root.geometry("800x700")
+        self.root.geometry("900x800")
         self.root.configure(bg='#2b2b2b')
         self.root.resizable(True, True)
 
@@ -48,13 +51,8 @@ class VoiceApp:
         self.model = WhisperModel("small", device=device, compute_type=compute_type)  # Small model optimized for GPU
         print("Model loaded!")
 
-        # Text-to-speech engine
-        self.tts_engine = pyttsx3.init()
-        self.tts_engine.setProperty('rate', 220)  # Faster speech
-        self.tts_engine.setProperty('volume', 1.0)  # Full volume
-        voices = self.tts_engine.getProperty('voices')
-        if voices:
-            self.tts_engine.setProperty('voice', voices[0].id)  # Use first voice
+        # Text-to-speech with gTTS and pygame
+        pygame.mixer.init()
         self.tts_playing = False
 
         # Ollama models
@@ -309,8 +307,8 @@ class VoiceApp:
                     # Display AI response
                     self.ai_text_area.delete(1.0, tk.END)
                     self.ai_text_area.insert(tk.END, ai_response)
-                    # Speak the response
-                    self.speak_with_pyttsx3(ai_response)
+                    # Speak the response with gTTS
+                    self.speak_with_gtts(ai_response)
                     self.update_status("🤖 AI responded!", "#00aa00")
                 else:
                     self.update_status("AI gave empty response", "orange")
@@ -323,20 +321,26 @@ class VoiceApp:
         except Exception as e:
             self.update_status(f"AI error: {str(e)[:50]}", "red")
 
-    def speak_with_pyttsx3(self, text):
+    def speak_with_gtts(self, text):
         try:
             self.tts_playing = True
-            self.tts_engine.say(text)
-            self.tts_engine.runAndWait()
+            tts = gTTS(text=text, lang='en', slow=False)
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
+            tts.save(temp_file.name)
+            pygame.mixer.music.load(temp_file.name)
+            pygame.mixer.music.play()
+            while pygame.mixer.music.get_busy() and self.tts_playing:
+                pygame.time.wait(100)
+            pygame.mixer.music.stop()
+            os.unlink(temp_file.name)
         except Exception as e:
             print(f"TTS error: {e}")
         finally:
             self.tts_playing = False
 
     def stop_tts(self):
-        if self.tts_playing:
-            self.tts_engine.stop()
-            self.tts_playing = False
+        self.tts_playing = False
+        pygame.mixer.music.stop()
         self.update_status("TTS stopped", "orange")
 
     def clear_text(self):
