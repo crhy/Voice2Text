@@ -25,6 +25,9 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,
+      webSecurity: false, // Allow speech recognition API
+      allowRunningInsecureContent: true, // Allow mixed content for speech API
+      sandbox: false, // Disable sandboxing for speech recognition
     },
     icon: path.join(__dirname, 'public/favicon.ico'), // Add icon if available
   });
