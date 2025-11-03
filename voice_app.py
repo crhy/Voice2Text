@@ -20,6 +20,8 @@ import wave
 from faster_whisper import WhisperModel
 from scipy.signal import resample
 import torch
+import requests
+import pyttsx3
 
 class VoiceApp:
     def __init__(self, root):
@@ -45,6 +47,11 @@ class VoiceApp:
         print(f"Using device: {device}, compute_type: {compute_type}")
         self.model = WhisperModel("small", device=device, compute_type=compute_type)  # Small model optimized for GPU
         print("Model loaded!")
+
+        # Text-to-speech engine
+        self.tts_engine = pyttsx3.init()
+        self.tts_engine.setProperty('rate', 180)  # Speed of speech
+        self.tts_engine.setProperty('volume', 0.9)  # Volume level
         self.is_listening = False
         self.current_text = ""
         self.audio_stream = None
@@ -197,6 +204,8 @@ class VoiceApp:
         if self.current_text.strip():
             pyperclip.copy(self.current_text.strip())
             self.update_status("📋 Text copied to clipboard!", "#0066cc")
+            # Send to Ollama and speak response
+            threading.Thread(target=self.query_ollama_and_speak, args=(self.current_text.strip(),), daemon=True).start()
         else:
             self.update_status("Ready", "black")
 
@@ -210,6 +219,27 @@ class VoiceApp:
             self.update_status("📋 Text copied to clipboard!", "#0066cc")
         else:
             self.update_status("No text to copy", "black")
+
+    def query_ollama_and_speak(self, user_text):
+        try:
+            # Query Ollama (assuming llama3.2 model)
+            response = requests.post('http://localhost:11434/api/generate',
+                                   json={
+                                       "model": "llama3.2",
+                                       "prompt": user_text,
+                                       "stream": False
+                                   },
+                                   timeout=30)
+            if response.status_code == 200:
+                ai_response = response.json()['response']
+                # Speak the response
+                self.tts_engine.say(ai_response)
+                self.tts_engine.runAndWait()
+                self.update_status("🤖 AI responded!", "#00aa00")
+            else:
+                self.update_status("Ollama error", "red")
+        except Exception as e:
+            self.update_status(f"AI error: {e}", "red")
 
     def clear_text(self):
         self.text_area.delete(1.0, tk.END)
