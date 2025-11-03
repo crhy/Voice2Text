@@ -25,13 +25,15 @@ import pyttsx3
 from gtts import gTTS
 import pygame
 import os
+from PIL import Image, ImageTk
+from pydub import AudioSegment
 
 class VoiceApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Voice To AI")
         self.root.geometry("900x800")
-        self.root.configure(bg='#2b2b2b')
+        self.root.configure(bg='#000033')  # Dark blue gradient approximation
         self.root.resizable(True, True)
 
         # Config
@@ -128,17 +130,17 @@ class VoiceApp:
     def create_gui(self):
         # Style
         style = ttk.Style()
-        style.configure('TFrame', background='#2b2b2b')
+        style.configure('TFrame', background='#000033')
         style.configure('TButton', font=('Helvetica', 12), padding=10)
-        style.configure('TLabel', font=('Helvetica', 10), background='#2b2b2b', foreground='white')
-        style.configure('TCombobox', font=('Helvetica', 10), background='#2b2b2b', fieldbackground='#1e1e1e', foreground='white', selectbackground='#4b4b4b', selectforeground='white')
+        style.configure('TLabel', font=('Helvetica', 10), background='#000033', foreground='white')
+        style.configure('TCombobox', font=('Helvetica', 10), background='#000033', fieldbackground='#000022', foreground='white', selectbackground='#000055', selectforeground='white')
 
         # Title
-        title_label = ttk.Label(self.root, text="Voice To AI", font=('Helvetica', 16, 'bold'))
+        title_label = ttk.Label(self.root, text="Voice To AI", font=('Helvetica', 16, 'bold'), background='#000000')
         title_label.pack(pady=10)
 
         # Version
-        version_label = ttk.Label(self.root, text="v0.01", font=('Helvetica', 8))
+        version_label = ttk.Label(self.root, text="v0.01", font=('Helvetica', 8), background='#000000', foreground='white')
         version_label.place(relx=1.0, rely=0.0, anchor='ne', x=-10, y=10)
 
         # Microphone selection
@@ -149,7 +151,7 @@ class VoiceApp:
         self.mic_var = tk.StringVar()
         self.mic_menu = tk.OptionMenu(mic_frame, self.mic_var, *self.microphones, command=self.on_mic_change)
         self.mic_menu.pack(side='left', padx=(10, 0), fill='x', expand=True)
-        self.mic_menu.config(bg='#2b2b2b', fg='white', activebackground='#4b4b4b', activeforeground='white', highlightbackground='#2b2b2b', highlightcolor='#2b2b2b')
+        self.mic_menu.config(bg='#000033', fg='white', activebackground='#000055', activeforeground='white', highlightbackground='#000033', highlightcolor='#000033')
         if self.microphones:
             self.mic_var.set(self.microphones[self.selected_mic_index])
 
@@ -161,7 +163,7 @@ class VoiceApp:
         self.model_var = tk.StringVar()
         self.model_menu = tk.OptionMenu(model_frame, self.model_var, *self.ollama_models if self.ollama_models else ["No models found"])
         self.model_menu.pack(side='left', padx=(10, 0), fill='x', expand=True)
-        self.model_menu.config(bg='#2b2b2b', fg='white', activebackground='#4b4b4b', activeforeground='white', highlightbackground='#2b2b2b', highlightcolor='#2b2b2b')
+        self.model_menu.config(bg='#000033', fg='white', activebackground='#000055', activeforeground='white', highlightbackground='#000033', highlightcolor='#000033')
         if self.ollama_models:
             self.model_var.set(self.selected_model)
         self.model_var.trace('w', self.on_model_change)
@@ -176,7 +178,7 @@ class VoiceApp:
 
         ttk.Label(text_frame, text="Transcribed Text:").pack(anchor='w')
         self.text_area = scrolledtext.ScrolledText(text_frame, height=15, wrap=tk.WORD,
-                                                  bg='#2b2b2b', fg='white', insertbackground='white',
+                                                  bg='#000022', fg='white', insertbackground='white',
                                                   font=('Consolas', 10))
         self.text_area.pack(fill='x', expand=False)
 
@@ -186,7 +188,7 @@ class VoiceApp:
 
         ttk.Label(ai_frame, text="AI Response:").pack(anchor='w')
         self.ai_text_area = scrolledtext.ScrolledText(ai_frame, height=12, wrap=tk.WORD,
-                                                     bg='#1e1e1e', fg='white', insertbackground='white',
+                                                     bg='#000022', fg='white', insertbackground='white',
                                                      font=('Consolas', 10))
         self.ai_text_area.pack(fill='x', expand=False)
 
@@ -327,12 +329,18 @@ class VoiceApp:
             tts = gTTS(text=text, lang='en', slow=False)
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
             tts.save(temp_file.name)
-            pygame.mixer.music.load(temp_file.name)
+            # Speed up audio
+            audio = AudioSegment.from_mp3(temp_file.name)
+            faster_audio = audio.speedup(playback_speed=1.3)  # 30% faster
+            sped_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
+            faster_audio.export(sped_file.name, format='mp3')
+            pygame.mixer.music.load(sped_file.name)
             pygame.mixer.music.play()
             while pygame.mixer.music.get_busy() and self.tts_playing:
                 pygame.time.wait(100)
             pygame.mixer.music.stop()
             os.unlink(temp_file.name)
+            os.unlink(sped_file.name)
         except Exception as e:
             print(f"TTS error: {e}")
         finally:
