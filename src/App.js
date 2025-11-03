@@ -23,12 +23,14 @@ function App() {
   useEffect(() => {
     // Check if browser supports speech recognition
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    console.log('SpeechRecognition available:', !!SpeechRecognition);
     if (SpeechRecognition) {
       setBrowserSupportsSpeechRecognition(true);
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
       recognitionRef.current.lang = 'en-US';
+      console.log('Speech recognition initialized:', recognitionRef.current);
 
       recognitionRef.current.onresult = (event) => {
         console.log('Speech recognition result:', event);

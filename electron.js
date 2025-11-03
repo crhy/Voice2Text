@@ -2,6 +2,13 @@ const { app, BrowserWindow, systemPreferences } = require('electron');
 const path = require('path');
 const isDev = process.env.NODE_ENV === 'development';
 
+// Enable speech recognition in Electron
+app.commandLine.appendSwitch('--enable-speech-dispatcher');
+app.commandLine.appendSwitch('--enable-experimental-web-platform-features');
+app.commandLine.appendSwitch('--enable-features', 'WebSpeechAPI');
+app.commandLine.appendSwitch('--disable-web-security');
+app.commandLine.appendSwitch('--allow-running-insecure-content');
+
 async function requestMicrophoneAccess() {
   try {
     if (process.platform === 'darwin') {
