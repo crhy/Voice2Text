@@ -1,0 +1,369 @@
+#!/usr/bin/env python3
+"""
+Voice-to-OpenCode GUI Application
+
+A standalone GUI app for voice recognition that integrates with OpenCode.
+Features a simple interface with start/stop buttons and automatic clipboard copying.
+"""
+
+import tkinter as tk
+from tkinter import ttk, scrolledtext, messagebox
+import pyperclip
+import threading
+import time
+import os
+import json
+import pyaudio
+import numpy as np
+import tempfile
+import wave
+from faster_whisper import WhisperModel
+from scipy.signal import resample
+import torch
+
+class VoiceApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Voice-to-OpenCode")
+        self.root.geometry("600x500")
+        self.root.configure(bg='#2b2b2b')
+        self.root.resizable(True, True)
+
+        # Config
+        self.config_file = 'voice_config.json'
+        self.config = self.load_config()
+
+        # Audio devices
+        self.audio = pyaudio.PyAudio()
+        self.microphones = self.get_microphones()
+        self.selected_mic_index = self.config.get('microphone_index', 0)
+
+        # Speech recognition with Faster Whisper
+        print("Loading Whisper model... (this may take a minute on first run)")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        compute_type = "float16" if device == "cuda" else "int8"
+        print(f"Using device: {device}, compute_type: {compute_type}")
+        self.model = WhisperModel("small", device=device, compute_type=compute_type)  # Small model optimized for GPU
+        print("Model loaded!")
+        self.is_listening = False
+        self.current_text = ""
+        self.audio_stream = None
+        self.audio_frames = []
+
+        # GUI elements
+        self.create_gui()
+
+        # Bind close event
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def load_config(self):
+        if os.path.exists(self.config_file):
+            try:
+                with open(self.config_file, 'r') as f:
+                    return json.load(f)
+            except:
+                return {}
+        return {}
+
+    def save_config(self):
+        config = {
+            'microphone_index': self.selected_mic_index
+        }
+        try:
+            with open(self.config_file, 'w') as f:
+                json.dump(config, f)
+        except:
+            pass
+
+    def on_close(self):
+        self.save_config()
+        self.audio.terminate()
+        self.root.destroy()
+
+    def get_microphones(self):
+        microphones = []
+        for i in range(self.audio.get_device_count()):
+            info = self.audio.get_device_info_by_index(i)
+            max_input = info.get('maxInputChannels', 0)
+            if isinstance(max_input, (int, float)) and max_input > 0:
+                microphones.append(f"{info.get('name')} (Index: {i})")
+        return microphones
+
+    def get_mic_device_index(self, mic_string):
+        import re
+        match = re.search(r'Index: (\d+)', mic_string)
+        return int(match.group(1)) if match else 0
+
+    def audio_callback(self, in_data, frame_count, time_info, status):
+        """Callback for audio stream"""
+        if self.is_listening:
+            self.audio_frames.append(in_data)
+        return (in_data, pyaudio.paContinue)
+
+    def create_gui(self):
+        # Style
+        style = ttk.Style()
+        style.configure('TFrame', background='#2b2b2b')
+        style.configure('TButton', font=('Helvetica', 12), padding=10)
+        style.configure('TLabel', font=('Helvetica', 10), background='#2b2b2b', foreground='white')
+        style.configure('TCombobox', font=('Helvetica', 10), background='#2b2b2b', fieldbackground='#1e1e1e', foreground='white', selectbackground='#4b4b4b', selectforeground='white')
+
+        # Title
+        title_label = ttk.Label(self.root, text="🎤 Voice-to-OpenCode", font=('Helvetica', 16, 'bold'))
+        title_label.pack(pady=10)
+
+        # Microphone selection
+        mic_frame = ttk.Frame(self.root)
+        mic_frame.pack(pady=5, padx=20, fill='x')
+
+        ttk.Label(mic_frame, text="Microphone:").pack(side='left')
+        self.mic_var = tk.StringVar()
+        self.mic_menu = tk.OptionMenu(mic_frame, self.mic_var, *self.microphones, command=self.on_mic_change)
+        self.mic_menu.pack(side='left', padx=(10, 0), fill='x', expand=True)
+        self.mic_menu.config(bg='#2b2b2b', fg='white', activebackground='#4b4b4b', activeforeground='white', highlightbackground='#2b2b2b', highlightcolor='#2b2b2b')
+        if self.microphones:
+            self.mic_var.set(self.microphones[self.selected_mic_index])
+
+        # Status label
+        self.status_label = ttk.Label(self.root, text="Ready", font=('Helvetica', 12))
+        self.status_label.pack(pady=10)
+
+        # Text area
+        text_frame = ttk.Frame(self.root)
+        text_frame.pack(pady=5, padx=20, fill='x')
+
+        ttk.Label(text_frame, text="Transcribed Text:").pack(anchor='w')
+        self.text_area = scrolledtext.ScrolledText(text_frame, height=15, wrap=tk.WORD,
+                                                  bg='#2b2b2b', fg='white', insertbackground='white',
+                                                  font=('Consolas', 10))
+        self.text_area.pack(fill='x', expand=False)
+
+        # Buttons
+        button_frame = ttk.Frame(self.root)
+        button_frame.pack(pady=2)
+
+        self.start_button = ttk.Button(button_frame, text="🎙️ Start Dictation",
+                                      command=self.start_dictation)
+        self.start_button.pack(side='left', padx=5)
+
+        self.stop_button = ttk.Button(button_frame, text="⏹️ Stop Dictation",
+                                     command=self.stop_dictation, state='disabled')
+        self.stop_button.pack(side='left', padx=5)
+
+        self.copy_button = ttk.Button(button_frame, text="📋 Copy",
+                                      command=self.copy_text)
+        self.copy_button.pack(side='left', padx=5)
+
+        self.send_button = ttk.Button(button_frame, text="📤 Send to OpenCode",
+                                     command=self.send_to_opencode)
+        self.send_button.pack(side='left', padx=5)
+
+        self.clear_button = ttk.Button(button_frame, text="🗑️ Clear",
+                                       command=self.clear_text)
+        self.clear_button.pack(side='left', padx=5)
+
+
+
+    def on_mic_change(self, value):
+        try:
+            self.selected_mic_index = self.microphones.index(value)
+            self.save_config()
+            self.update_status(f"Selected: {value.split(' (')[0]}")
+        except ValueError:
+            pass
+
+    def update_status(self, message, color='black'):
+        self.status_label.config(text=message)
+        self.root.update_idletasks()
+
+    def start_dictation(self):
+        if not self.microphones:
+            messagebox.showerror("Error", "No microphones found!")
+            return
+
+        self.is_listening = True
+        self.current_text = ""
+        self.text_area.delete(1.0, tk.END)
+        self.text_area.insert(tk.END, "🎙️ Listening... Speak now!\n\n")
+
+        self.start_button.config(state='disabled')
+        self.stop_button.config(state='normal')
+        self.update_status("🎙️ Listening...", "#00aa00")
+
+        # Start listening in background thread
+        threading.Thread(target=self.listen_loop, daemon=True).start()
+
+    def stop_dictation(self):
+        self.is_listening = False
+        self.start_button.config(state='normal')
+        self.stop_button.config(state='disabled')
+
+        if self.current_text.strip():
+            pyperclip.copy(self.current_text.strip())
+            self.update_status("📋 Text copied to clipboard!", "#0066cc")
+        else:
+            self.update_status("Ready", "black")
+
+    def copy_text(self):
+        text = self.text_area.get(1.0, tk.END).strip()
+        if text:
+            pyperclip.copy(text)
+            self.update_status("📋 Text copied to clipboard!", "#0066cc")
+        else:
+            self.update_status("No text to copy", "black")
+
+    def send_to_opencode(self):
+        text = self.text_area.get(1.0, tk.END).strip()
+        if text:
+            pyperclip.copy(text)
+            self.update_status("📤 Text sent to OpenCode - paste with Ctrl+V!", "#00aa00")
+        else:
+            self.update_status("No text to send", "black")
+
+    def clear_text(self):
+        self.text_area.delete(1.0, tk.END)
+        self.current_text = ""
+        self.update_status("Ready", "black")
+
+    def listen_loop(self):
+        try:
+            device_index = self.get_mic_device_index(self.microphones[self.selected_mic_index])
+
+            # Start audio stream - try different sample rates
+            self.audio_frames = []
+            sample_rates = [44100, 48000, 16000]  # Try common rates
+
+            for rate in sample_rates:
+                try:
+                    self.audio_stream = self.audio.open(
+                        format=pyaudio.paInt16,
+                        channels=1,
+                        rate=rate,
+                        input=True,
+                        input_device_index=device_index,
+                        frames_per_buffer=1024,
+                        stream_callback=self.audio_callback
+                    )
+                    self.sample_rate = rate
+                    break
+                except Exception as e:
+                    print(f"Failed to open stream at {rate} Hz: {e}")
+                    continue
+            else:
+                raise Exception("Could not open audio stream at any supported sample rate")
+
+            self.audio_stream.start_stream()
+            self.root.after(0, lambda: self.update_status("🎙️ Listening... (real-time)", "#00aa00"))
+
+            processed_frames = 0
+            chunk_duration = 2  # seconds for faster real-time display with good accuracy
+
+            # Real-time transcription loop
+            while self.is_listening:
+                time.sleep(chunk_duration)
+
+                # Check if we have new frames to process
+                if len(self.audio_frames) > processed_frames:
+                    chunk_frames = self.audio_frames[processed_frames:]
+                    processed_frames = len(self.audio_frames)
+
+                    # Process this chunk
+                    self.root.after(0, lambda: self.update_status("🔍 Recognizing...", "#ffaa00"))
+                    try:
+                        # Convert chunk to numpy and resample
+                        audio_data = np.frombuffer(b''.join(chunk_frames), dtype=np.int16)
+                        if self.sample_rate != 16000:
+                            num_samples = len(audio_data)
+                            target_samples = int(num_samples * 16000 / self.sample_rate)
+                            audio_data = resample(audio_data, target_samples).astype(np.int16)
+
+                        # Save chunk to temp WAV
+                        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+                            temp_filename = temp_file.name
+
+                            with wave.open(temp_filename, 'wb') as wf:
+                                wf.setnchannels(1)
+                                wf.setsampwidth(2)
+                                wf.setframerate(16000)
+                                wf.writeframes(audio_data.tobytes())
+
+                        # Transcribe chunk
+                        segments, info = self.model.transcribe(temp_filename, language="en")
+                        text = " ".join(segment.text for segment in segments).strip()
+
+                        os.unlink(temp_filename)
+
+                        if text:
+                            self.current_text += text + " "
+                            self.root.after(0, self.update_transcript, text)
+                            self.root.after(0, lambda: self.update_status("🎙️ Listening... (real-time)", "#00aa00"))
+                        else:
+                            self.root.after(0, lambda: self.update_status("🎙️ Listening... (real-time)", "#00aa00"))
+
+                    except Exception as e:
+                        self.root.after(0, self.update_transcript, f"[Error: {e}]")
+                        self.root.after(0, lambda: self.update_status("🎙️ Listening... (real-time)", "#00aa00"))
+
+            # Stop recording
+            if self.audio_stream:
+                self.audio_stream.stop_stream()
+                self.audio_stream.close()
+                self.audio_stream = None
+
+            # Process any remaining frames
+            if len(self.audio_frames) > processed_frames:
+                remaining_frames = self.audio_frames[processed_frames:]
+                self.root.after(0, lambda: self.update_status("🔍 Finalizing...", "#ffaa00"))
+                try:
+                    audio_data = np.frombuffer(b''.join(remaining_frames), dtype=np.int16)
+                    if self.sample_rate != 16000:
+                        num_samples = len(audio_data)
+                        target_samples = int(num_samples * 16000 / self.sample_rate)
+                        audio_data = resample(audio_data, target_samples).astype(np.int16)
+
+                    with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+                        temp_filename = temp_file.name
+
+                        with wave.open(temp_filename, 'wb') as wf:
+                            wf.setnchannels(1)
+                            wf.setsampwidth(2)
+                            wf.setframerate(16000)
+                            wf.writeframes(audio_data.tobytes())
+
+                    segments, info = self.model.transcribe(temp_filename, language="en")
+                    text = " ".join(segment.text for segment in segments).strip()
+
+                    os.unlink(temp_filename)
+
+                    if text:
+                        self.current_text += text + " "
+                        self.root.after(0, self.update_transcript, text)
+
+                except Exception as e:
+                    self.root.after(0, self.update_transcript, f"[Error: {e}]")
+
+            self.root.after(0, lambda: self.update_status("Ready", "black"))
+
+        except Exception as e:
+            self.root.after(0, lambda: messagebox.showerror("Error", f"Recognition error: {e}"))
+            self.root.after(0, self.stop_dictation)
+
+    def update_transcript(self, text):
+        self.text_area.insert(tk.END, f"{text}\n")
+        self.text_area.see(tk.END)
+        self.root.update_idletasks()
+
+def main():
+    try:
+        root = tk.Tk()
+        app = VoiceApp(root)
+        root.mainloop()
+    except ImportError as e:
+        print(f"Missing dependency: {e}")
+        print("Install required packages:")
+        print("pip install SpeechRecognition pyperclip pyaudio pocketsphinx")
+    except Exception as e:
+        print(f"Error: {e}")
+
+if __name__ == "__main__":
+    main()
