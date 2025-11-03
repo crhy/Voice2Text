@@ -22,6 +22,9 @@ from scipy.signal import resample
 import torch
 import requests
 import pyttsx3
+from gtts import gTTS
+import pygame
+import os
 
 class VoiceApp:
     def __init__(self, root):
@@ -48,10 +51,9 @@ class VoiceApp:
         self.model = WhisperModel("small", device=device, compute_type=compute_type)  # Small model optimized for GPU
         print("Model loaded!")
 
-        # Text-to-speech engine
-        self.tts_engine = pyttsx3.init()
-        self.tts_engine.setProperty('rate', 180)  # Speed of speech
-        self.tts_engine.setProperty('volume', 0.9)  # Volume level
+        # Text-to-speech with pygame for better quality
+        pygame.mixer.init()
+        self.tts_playing = False
 
         # Ollama models
         self.ollama_models = self.get_ollama_models()
@@ -173,6 +175,16 @@ class VoiceApp:
                                                   font=('Consolas', 10))
         self.text_area.pack(fill='x', expand=False)
 
+        # AI Response area
+        ai_frame = ttk.Frame(self.root)
+        ai_frame.pack(pady=5, padx=20, fill='x')
+
+        ttk.Label(ai_frame, text="AI Response:").pack(anchor='w')
+        self.ai_text_area = scrolledtext.ScrolledText(ai_frame, height=8, wrap=tk.WORD,
+                                                     bg='#1e1e1e', fg='white', insertbackground='white',
+                                                     font=('Consolas', 10))
+        self.ai_text_area.pack(fill='x', expand=False)
+
         # Buttons
         button_frame = ttk.Frame(self.root)
         button_frame.pack(pady=2)
@@ -192,6 +204,10 @@ class VoiceApp:
         self.send_ai_button = ttk.Button(button_frame, text="🤖 Send to AI",
                                          command=self.send_to_ai)
         self.send_ai_button.pack(side='left', padx=5)
+
+        self.stop_tts_button = ttk.Button(button_frame, text="⏹️ Stop TTS",
+                                          command=self.stop_tts)
+        self.stop_tts_button.pack(side='left', padx=5)
 
         self.clear_button = ttk.Button(button_frame, text="🗑️ Clear",
                                        command=self.clear_text)
@@ -283,9 +299,11 @@ class VoiceApp:
             if response.status_code == 200:
                 ai_response = response.json()['response'].strip()
                 if ai_response:
-                    # Speak the response
-                    self.tts_engine.say(ai_response)
-                    self.tts_engine.runAndWait()
+                    # Display AI response
+                    self.ai_text_area.delete(1.0, tk.END)
+                    self.ai_text_area.insert(tk.END, ai_response)
+                    # Speak the response with gTTS
+                    self.speak_with_gtts(ai_response)
                     self.update_status("🤖 AI responded!", "#00aa00")
                 else:
                     self.update_status("AI gave empty response", "orange")
@@ -297,6 +315,28 @@ class VoiceApp:
             self.update_status("Cannot connect to Ollama - check if running", "red")
         except Exception as e:
             self.update_status(f"AI error: {str(e)[:50]}", "red")
+
+    def speak_with_gtts(self, text):
+        try:
+            self.tts_playing = True
+            tts = gTTS(text=text, lang='en', slow=False)
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
+            tts.save(temp_file.name)
+            pygame.mixer.music.load(temp_file.name)
+            pygame.mixer.music.play()
+            while pygame.mixer.music.get_busy() and self.tts_playing:
+                pygame.time.wait(100)
+            pygame.mixer.music.stop()
+            os.unlink(temp_file.name)
+        except Exception as e:
+            print(f"TTS error: {e}")
+        finally:
+            self.tts_playing = False
+
+    def stop_tts(self):
+        self.tts_playing = False
+        pygame.mixer.music.stop()
+        self.update_status("TTS stopped", "orange")
 
     def clear_text(self):
         self.text_area.delete(1.0, tk.END)
