@@ -26,7 +26,6 @@ from gtts import gTTS
 import pygame
 import os
 from PIL import Image, ImageTk
-from pydub import AudioSegment
 
 class VoiceApp:
     def __init__(self, root):
@@ -136,11 +135,11 @@ class VoiceApp:
         style.configure('TCombobox', font=('Helvetica', 10), background='#000033', fieldbackground='#000022', foreground='white', selectbackground='#000055', selectforeground='white')
 
         # Title
-        title_label = ttk.Label(self.root, text="Voice To AI", font=('Helvetica', 16, 'bold'), background='#000000')
+        title_label = ttk.Label(self.root, text="Voice To AI", font=('Helvetica', 16, 'bold'), background='#000033', foreground='white')
         title_label.pack(pady=10)
 
         # Version
-        version_label = ttk.Label(self.root, text="v0.01", font=('Helvetica', 8), background='#000000', foreground='white')
+        version_label = ttk.Label(self.root, text="v0.01", font=('Helvetica', 8), background='#000033', foreground='white')
         version_label.place(relx=1.0, rely=0.0, anchor='ne', x=-10, y=10)
 
         # Microphone selection
@@ -329,18 +328,12 @@ class VoiceApp:
             tts = gTTS(text=text, lang='en', slow=False)
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
             tts.save(temp_file.name)
-            # Speed up audio
-            audio = AudioSegment.from_mp3(temp_file.name)
-            faster_audio = audio.speedup(playback_speed=1.3)  # 30% faster
-            sped_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
-            faster_audio.export(sped_file.name, format='mp3')
-            pygame.mixer.music.load(sped_file.name)
+            pygame.mixer.music.load(temp_file.name)
             pygame.mixer.music.play()
             while pygame.mixer.music.get_busy() and self.tts_playing:
                 pygame.time.wait(100)
             pygame.mixer.music.stop()
             os.unlink(temp_file.name)
-            os.unlink(sped_file.name)
         except Exception as e:
             print(f"TTS error: {e}")
         finally:

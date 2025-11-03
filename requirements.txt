@@ -9,4 +9,3 @@ pyttsx3
 gTTS
 pygame
 pillow
-pydub
