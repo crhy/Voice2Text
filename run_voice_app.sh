@@ -1,7 +1,7 @@
 #!/bin/bash
 # Voice-to-OpenCode Launcher Script
 
-echo "🎤 Starting Voice-to-OpenCode GUI Application..."
+echo "🎤 Starting Voice To AI Application..."
 echo "================================================"
 
 # Check if virtual environment exists

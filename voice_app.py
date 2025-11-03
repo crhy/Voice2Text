@@ -22,15 +22,12 @@ from scipy.signal import resample
 import torch
 import requests
 import pyttsx3
-from gtts import gTTS
-import pygame
-import os
 
 class VoiceApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Voice-to-OpenCode")
-        self.root.geometry("600x500")
+        self.root.title("Voice To AI")
+        self.root.geometry("800x700")
         self.root.configure(bg='#2b2b2b')
         self.root.resizable(True, True)
 
@@ -51,8 +48,13 @@ class VoiceApp:
         self.model = WhisperModel("small", device=device, compute_type=compute_type)  # Small model optimized for GPU
         print("Model loaded!")
 
-        # Text-to-speech with pygame for better quality
-        pygame.mixer.init()
+        # Text-to-speech engine
+        self.tts_engine = pyttsx3.init()
+        self.tts_engine.setProperty('rate', 220)  # Faster speech
+        self.tts_engine.setProperty('volume', 1.0)  # Full volume
+        voices = self.tts_engine.getProperty('voices')
+        if voices:
+            self.tts_engine.setProperty('voice', voices[0].id)  # Use first voice
         self.tts_playing = False
 
         # Ollama models
@@ -134,8 +136,12 @@ class VoiceApp:
         style.configure('TCombobox', font=('Helvetica', 10), background='#2b2b2b', fieldbackground='#1e1e1e', foreground='white', selectbackground='#4b4b4b', selectforeground='white')
 
         # Title
-        title_label = ttk.Label(self.root, text="🎤 Voice-to-OpenCode", font=('Helvetica', 16, 'bold'))
+        title_label = ttk.Label(self.root, text="Voice To AI", font=('Helvetica', 16, 'bold'))
         title_label.pack(pady=10)
+
+        # Version
+        version_label = ttk.Label(self.root, text="v0.01", font=('Helvetica', 8))
+        version_label.place(relx=1.0, rely=0.0, anchor='ne', x=-10, y=10)
 
         # Microphone selection
         mic_frame = ttk.Frame(self.root)
@@ -181,7 +187,7 @@ class VoiceApp:
         ai_frame.pack(pady=5, padx=20, fill='x')
 
         ttk.Label(ai_frame, text="AI Response:").pack(anchor='w')
-        self.ai_text_area = scrolledtext.ScrolledText(ai_frame, height=8, wrap=tk.WORD,
+        self.ai_text_area = scrolledtext.ScrolledText(ai_frame, height=12, wrap=tk.WORD,
                                                      bg='#1e1e1e', fg='white', insertbackground='white',
                                                      font=('Consolas', 10))
         self.ai_text_area.pack(fill='x', expand=False)
@@ -303,8 +309,8 @@ class VoiceApp:
                     # Display AI response
                     self.ai_text_area.delete(1.0, tk.END)
                     self.ai_text_area.insert(tk.END, ai_response)
-                    # Speak the response with gTTS
-                    self.speak_with_gtts(ai_response)
+                    # Speak the response
+                    self.speak_with_pyttsx3(ai_response)
                     self.update_status("🤖 AI responded!", "#00aa00")
                 else:
                     self.update_status("AI gave empty response", "orange")
@@ -317,26 +323,20 @@ class VoiceApp:
         except Exception as e:
             self.update_status(f"AI error: {str(e)[:50]}", "red")
 
-    def speak_with_gtts(self, text):
+    def speak_with_pyttsx3(self, text):
         try:
             self.tts_playing = True
-            tts = gTTS(text=text, lang='en', slow=False)
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
-            tts.save(temp_file.name)
-            pygame.mixer.music.load(temp_file.name)
-            pygame.mixer.music.play()
-            while pygame.mixer.music.get_busy() and self.tts_playing:
-                pygame.time.wait(100)
-            pygame.mixer.music.stop()
-            os.unlink(temp_file.name)
+            self.tts_engine.say(text)
+            self.tts_engine.runAndWait()
         except Exception as e:
             print(f"TTS error: {e}")
         finally:
             self.tts_playing = False
 
     def stop_tts(self):
-        self.tts_playing = False
-        pygame.mixer.music.stop()
+        if self.tts_playing:
+            self.tts_engine.stop()
+            self.tts_playing = False
         self.update_status("TTS stopped", "orange")
 
     def clear_text(self):

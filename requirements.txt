@@ -6,5 +6,3 @@ PyAudio
 scipy
 requests
 pyttsx3
-gTTS
-pygame
