@@ -52,6 +52,10 @@ class VoiceApp:
         self.tts_engine = pyttsx3.init()
         self.tts_engine.setProperty('rate', 180)  # Speed of speech
         self.tts_engine.setProperty('volume', 0.9)  # Volume level
+
+        # Ollama models
+        self.ollama_models = self.get_ollama_models()
+        self.selected_model = "llama3.2" if "llama3.2" in self.ollama_models else (self.ollama_models[0] if self.ollama_models else "llama3.2")
         self.is_listening = False
         self.current_text = ""
         self.audio_stream = None
@@ -62,6 +66,17 @@ class VoiceApp:
 
         # Bind close event
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def get_ollama_models(self):
+        try:
+            response = requests.get('http://localhost:11434/api/tags', timeout=5)
+            if response.status_code == 200:
+                models = [model['name'] for model in response.json()['models']]
+                return models
+            else:
+                return []
+        except:
+            return []
 
     def load_config(self):
         if os.path.exists(self.config_file):
@@ -131,6 +146,19 @@ class VoiceApp:
         if self.microphones:
             self.mic_var.set(self.microphones[self.selected_mic_index])
 
+        # AI Model selection
+        model_frame = ttk.Frame(self.root)
+        model_frame.pack(pady=5, padx=20, fill='x')
+
+        ttk.Label(model_frame, text="AI Model:").pack(side='left')
+        self.model_var = tk.StringVar()
+        self.model_menu = tk.OptionMenu(model_frame, self.model_var, *self.ollama_models if self.ollama_models else ["No models found"])
+        self.model_menu.pack(side='left', padx=(10, 0), fill='x', expand=True)
+        self.model_menu.config(bg='#2b2b2b', fg='white', activebackground='#4b4b4b', activeforeground='white', highlightbackground='#2b2b2b', highlightcolor='#2b2b2b')
+        if self.ollama_models:
+            self.model_var.set(self.selected_model)
+        self.model_var.trace('w', self.on_model_change)
+
         # Status label
         self.status_label = ttk.Label(self.root, text="Ready", font=('Helvetica', 12))
         self.status_label.pack(pady=10)
@@ -174,6 +202,10 @@ class VoiceApp:
             self.update_status(f"Selected: {value.split(' (')[0]}")
         except ValueError:
             pass
+
+    def on_model_change(self, *args):
+        self.selected_model = self.model_var.get()
+        self.update_status(f"AI Model: {self.selected_model}")
 
     def update_status(self, message, color='black'):
         self.status_label.config(text=message)
@@ -225,7 +257,7 @@ class VoiceApp:
             # Query Ollama (assuming llama3.2 model)
             response = requests.post('http://localhost:11434/api/generate',
                                    json={
-                                       "model": "llama3.2",
+                                       "model": self.selected_model,
                                        "prompt": user_text,
                                        "stream": False
                                    },
