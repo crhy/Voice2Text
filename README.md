@@ -14,6 +14,56 @@ A beautiful standalone voice-to-text app with OpenCode integration. Speak natura
 - Flatpak packaging for easy Linux distribution
 - OpenCode integration (copy text for AI prompts)
 
+## Project Structure
+
+```
+Voice2Text/
+├── public/
+│   ├── electron.js
+│   ├── favicon.ico
+│   └── index.html
+├── src/
+│   ├── Components/
+│   │   ├── Details/
+│   │   │   ├── Details.css
+│   │   │   └── Details.jsx
+│   │   ├── Editor/
+│   │   │   ├── assets/
+│   │   │   │   └── star.png
+│   │   │   ├── Editor.css
+│   │   │   └── Editor.jsx
+│   │   ├── Navbar/
+│   │   │   ├── Navbar.css
+│   │   │   └── Navbar.jsx
+│   │   └── Options/
+│   │       ├── assets/
+│   │       │   ├── headset.png
+│   │       │   ├── headset_on.png
+│   │       │   ├── star.png
+│   │       │   ├── trash.png
+│   │       │   └── volume.png
+│   │       ├── Options.css
+│   │       └── Options.jsx
+│   ├── App.css
+│   ├── App.js
+│   ├── index.css
+│   └── index.js
+├── .gitattributes
+├── .gitignore
+├── README.md
+├── com.voice2text.app.desktop
+├── com.voice2text.app.metainfo.xml
+├── com.voice2text.app.yml
+├── electron.js
+├── package-lock.json
+├── package.json
+├── requirements.txt
+├── run_voice_app.sh
+├── test_whisper.py
+├── voice_app.py
+└── voice_config.json
+```
+
 ## Installation
 
 ### Option 1: Web App (Development)
